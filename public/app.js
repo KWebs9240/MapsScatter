@@ -36,12 +36,11 @@ const CONFIG = {
 // =============================================================================
 
 let map;
-let directionsService;
-let renderers   = [];   // One DirectionsRenderer per destination
-let routeResults = [];  // Cached API results; null = error, undefined = pending
+let polylines    = [];   // One Polyline per destination
+let routeResults = [];   // Cached route data; null = error, undefined = pending
 let originMarker  = null;
 let destMarkers   = [];
-let activeIndex   = -1; // -1 = all routes shown
+let activeIndex   = -1;  // -1 = all routes shown
 
 // =============================================================================
 // Entry point — called by the Google Maps script once it has loaded
@@ -63,8 +62,6 @@ function initMap() {
       { featureType: 'transit', elementType: 'labels', stylers: [{ visibility: 'off' }] },
     ],
   });
-
-  directionsService = new google.maps.DirectionsService();
 
   buildCards();
   loadAllRoutes();
@@ -99,7 +96,7 @@ function buildCards() {
 }
 
 // =============================================================================
-// Fetch routes for all destinations
+// Fetch routes for all destinations via the Routes API
 // =============================================================================
 
 function loadAllRoutes() {
@@ -107,9 +104,9 @@ function loadAllRoutes() {
   btn.disabled = true;
   btn.classList.add('spinning');
 
-  // Remove old renderers and markers
-  renderers.forEach(r => r && r.setMap(null));
-  renderers    = new Array(CONFIG.destinations.length).fill(null);
+  // Remove old polylines and markers
+  polylines.forEach(p => p && p.setMap(null));
+  polylines    = new Array(CONFIG.destinations.length).fill(null);
   routeResults = new Array(CONFIG.destinations.length).fill(undefined);
   activeIndex  = -1;
 
@@ -126,71 +123,112 @@ function loadAllRoutes() {
     c.querySelector('.card-dist').textContent = '';
   });
 
+  // Extract the API key from the already-loaded Maps JS script tag
+  const apiKey = new URL(
+    document.querySelector('script[src*="maps.googleapis.com"]').src
+  ).searchParams.get('key');
+
   const combinedBounds = new google.maps.LatLngBounds();
   let doneCount = 0;
 
-  CONFIG.destinations.forEach((dest, i) => {
-    const renderer = new google.maps.DirectionsRenderer({
-      map,
-      suppressMarkers: true,   // We draw our own markers below
-      preserveViewport: true,
-      polylineOptions: {
-        strokeColor:   dest.color,
-        strokeWeight:  5,
-        strokeOpacity: 0.88,
-      },
-    });
-    renderers[i] = renderer;
+  function onSettled() {
+    doneCount++;
+    if (doneCount === CONFIG.destinations.length) {
+      if (!combinedBounds.isEmpty()) {
+        map.fitBounds(combinedBounds, 52);
+      }
+      placeMarkers();
+      btn.disabled = false;
+      btn.classList.remove('spinning');
+      updateTimestamp();
+    }
+  }
 
-    directionsService.route(
-      {
-        origin:      CONFIG.origin,
-        destination: dest.address,
-        travelMode:  google.maps.TravelMode.DRIVING,
-        drivingOptions: {
-          departureTime: new Date(),       // "right now" → returns traffic-aware duration
-          trafficModel:  'bestguess',
-        },
+  CONFIG.destinations.forEach((dest, i) => {
+    fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+      method: 'POST',
+      headers: {
+        'Content-Type':    'application/json',
+        'X-Goog-Api-Key':  apiKey,
+        'X-Goog-FieldMask': [
+          'routes.duration',
+          'routes.distanceMeters',
+          'routes.polyline.encodedPolyline',
+          'routes.legs.startLocation',
+          'routes.legs.endLocation',
+        ].join(','),
       },
-      (result, status) => {
-        doneCount++;
+      body: JSON.stringify({
+        origin:             { address: CONFIG.origin },
+        destination:        { address: dest.address },
+        travelMode:         'DRIVE',
+        routingPreference:  'TRAFFIC_AWARE',
+        departureTime:      new Date().toISOString(),
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
         const card = document.getElementById(`card-${i}`);
         card.classList.remove('loading');
 
-        if (status === google.maps.DirectionsStatus.OK) {
-          routeResults[i] = result;
-          renderer.setDirections(result);
+        if (data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const leg   = route.legs[0];
 
-          const leg      = result.routes[0].legs[0];
-          const duration = leg.duration_in_traffic || leg.duration; // traffic-aware if available
+          const decodedPath = google.maps.geometry.encoding.decodePath(
+            route.polyline.encodedPolyline
+          );
+
+          routeResults[i] = {
+            startLocation: new google.maps.LatLng(
+              leg.startLocation.latLng.latitude,
+              leg.startLocation.latLng.longitude
+            ),
+            endLocation: new google.maps.LatLng(
+              leg.endLocation.latLng.latitude,
+              leg.endLocation.latLng.longitude
+            ),
+            path: decodedPath,
+          };
+
+          polylines[i] = new google.maps.Polyline({
+            path:          decodedPath,
+            map,
+            strokeColor:   dest.color,
+            strokeWeight:  5,
+            strokeOpacity: 0.88,
+          });
+
+          const duration = parseDuration(route.duration);
+          const distance = parseDistance(route.distanceMeters);
           const eta      = new Date(Date.now() + duration.value * 1000);
           const etaStr   = eta.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
           document.getElementById(`time-${i}`).textContent = duration.text;
           document.getElementById(`eta-${i}`).textContent  = `→ ${etaStr}`;
-          document.getElementById(`dist-${i}`).textContent = leg.distance.text;
+          document.getElementById(`dist-${i}`).textContent = distance.text;
 
-          result.routes[0].overview_path.forEach(p => combinedBounds.extend(p));
+          decodedPath.forEach(p => combinedBounds.extend(p));
         } else {
           routeResults[i] = null;
           card.classList.add('error');
           document.getElementById(`time-${i}`).textContent = 'Unavailable';
           document.getElementById(`eta-${i}`).textContent  = 'Check address';
-          console.error(`Directions failed for "${dest.name}": ${status}`);
+          console.error(`Routes API failed for "${dest.name}":`, data.error || data);
         }
 
-        // Once all requests are settled, finalize the map view
-        if (doneCount === CONFIG.destinations.length) {
-          if (!combinedBounds.isEmpty()) {
-            map.fitBounds(combinedBounds, 52);
-          }
-          placeMarkers();
-          btn.disabled = false;
-          btn.classList.remove('spinning');
-          updateTimestamp();
-        }
-      }
-    );
+        onSettled();
+      })
+      .catch(err => {
+        const card = document.getElementById(`card-${i}`);
+        card.classList.remove('loading');
+        card.classList.add('error');
+        routeResults[i] = null;
+        document.getElementById(`time-${i}`).textContent = 'Unavailable';
+        document.getElementById(`eta-${i}`).textContent  = 'Network error';
+        console.error(`Fetch failed for "${dest.name}":`, err);
+        onSettled();
+      });
   });
 }
 
@@ -199,12 +237,11 @@ function loadAllRoutes() {
 // =============================================================================
 
 function placeMarkers() {
-  // Origin marker — pulled from the first successful result's start_location
+  // Origin marker — pulled from the first successful result's startLocation
   for (const r of routeResults) {
     if (r) {
-      const pos = r.routes[0].legs[0].start_location;
       originMarker = new google.maps.Marker({
-        position: pos,
+        position: r.startLocation,
         map,
         title:  'Work',
         zIndex: 100,
@@ -225,9 +262,8 @@ function placeMarkers() {
   routeResults.forEach((r, i) => {
     if (!r) return;
     const dest   = CONFIG.destinations[i];
-    const endPos = r.routes[0].legs[0].end_location;
     const marker = new google.maps.Marker({
-      position: endPos,
+      position: r.endLocation,
       map,
       title:  dest.name,
       zIndex: 90,
@@ -257,7 +293,7 @@ function selectCard(index) {
 
     const allBounds = new google.maps.LatLngBounds();
     routeResults.forEach(r => {
-      if (r) r.routes[0].overview_path.forEach(p => allBounds.extend(p));
+      if (r) r.path.forEach(p => allBounds.extend(p));
     });
     if (!allBounds.isEmpty()) map.fitBounds(allBounds, 52);
     return;
@@ -273,21 +309,19 @@ function selectCard(index) {
   // Zoom the map to just the selected route
   if (routeResults[index]) {
     const bounds = new google.maps.LatLngBounds();
-    routeResults[index].routes[0].overview_path.forEach(p => bounds.extend(p));
+    routeResults[index].path.forEach(p => bounds.extend(p));
     map.fitBounds(bounds, 52);
   }
 }
 
 function setPolylineStyles(activeIdx) {
-  renderers.forEach((r, i) => {
-    if (!r) return;
+  polylines.forEach((p, i) => {
+    if (!p) return;
     const highlighted = activeIdx === -1 || i === activeIdx;
-    r.setOptions({
-      polylineOptions: {
-        strokeColor:   CONFIG.destinations[i].color,
-        strokeOpacity: highlighted ? 0.9  : 0.15,
-        strokeWeight:  highlighted ? 6    : 3,
-      },
+    p.setOptions({
+      strokeColor:   CONFIG.destinations[i].color,
+      strokeOpacity: highlighted ? 0.9  : 0.15,
+      strokeWeight:  highlighted ? 6    : 3,
     });
   });
 }
@@ -295,6 +329,27 @@ function setPolylineStyles(activeIdx) {
 // =============================================================================
 // Helpers
 // =============================================================================
+
+// Routes API returns duration as "1234s" — convert to { value, text }
+function parseDuration(durationStr) {
+  const seconds = parseInt(durationStr, 10);
+  const mins    = Math.round(seconds / 60);
+  if (mins < 60) {
+    return { value: seconds, text: `${mins} min${mins !== 1 ? 's' : ''}` };
+  }
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return { value: seconds, text: m > 0 ? `${h} hr ${m} min` : `${h} hr` };
+}
+
+// Routes API returns distance in meters — convert to { value, text } in miles
+function parseDistance(meters) {
+  const miles = meters / 1609.344;
+  return {
+    value: meters,
+    text:  miles >= 10 ? `${Math.round(miles)} mi` : `${miles.toFixed(1)} mi`,
+  };
+}
 
 function updateTimestamp() {
   const t = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });

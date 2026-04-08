@@ -38,13 +38,13 @@
   <!--
     SETUP REQUIRED:
     1. Replace YOUR_GOOGLE_MAPS_API_KEY below with your key from Google Cloud Console.
-    2. In Cloud Console, enable: Maps JavaScript API + Directions API.
+    2. In Cloud Console, enable: Maps JavaScript API + Routes API.
     3. Restrict the key to your Firebase Hosting domain (e.g. your-project.web.app).
     4. Update the CONFIG object in app.js with your actual addresses.
   -->
   <script src="app.js"></script>
   <script async
-    src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap">
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=geometry&callback=initMap">
   </script>
 
 </body>
