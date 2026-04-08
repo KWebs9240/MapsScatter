@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>After Work Routes</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <h1 class="header-title">After Work</h1>
+      <span class="header-subtitle" id="last-updated">Fetching routes&hellip;</span>
+    </div>
+    <button class="refresh-btn" id="refresh-btn" aria-label="Refresh routes">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+    </button>
+  </header>
+
+  <div class="cards-wrapper">
+    <div class="cards-scroll" id="cards-scroll">
+      <!-- Route cards are built dynamically by app.js -->
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <!--
+    SETUP REQUIRED:
+    1. Replace YOUR_GOOGLE_MAPS_API_KEY below with your key from Google Cloud Console.
+    2. In Cloud Console, enable: Maps JavaScript API + Directions API.
+    3. Restrict the key to your Firebase Hosting domain (e.g. your-project.web.app).
+    4. Update the CONFIG object in app.js with your actual addresses.
+  -->
+  <script src="app.js"></script>
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap">
+  </script>
+
+</body>
+</html>
