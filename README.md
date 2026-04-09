@@ -57,6 +57,32 @@ Built with the Google Maps Directions API and hosted on Firebase Hosting.
 
 ---
 
+## Local Development
+
+There's no build step — open the files directly or use any static file server.
+
+**Option 1: Firebase emulator (recommended)**
+```bash
+# Install the Firebase CLI (once)
+npm install -g firebase-tools
+
+firebase serve
+```
+App runs at `http://localhost:5000`.
+
+**Option 2: Any static server**
+```bash
+# Python
+python -m http.server 8080 --directory public
+
+# Node (npx, no install needed)
+npx serve public
+```
+
+> **Note:** The Google Maps API key must be set in `public/index.html` before the app will load. The `localhost` origin needs to be added to the API key's allowed HTTP referrers in Google Cloud Console if you've restricted it.
+
+---
+
 ## Deploying to Firebase Hosting
 
 ```bash
