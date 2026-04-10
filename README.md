@@ -50,11 +50,6 @@ Built with the Google Maps Directions API and hosted on Firebase Hosting.
   </script>
   ```
 
-- [ ] **Set your Firebase project ID** in `.firebaserc`:
-  ```json
-  { "projects": { "default": "your-firebase-project-id" } }
-  ```
-
 ---
 
 ## Local Development
