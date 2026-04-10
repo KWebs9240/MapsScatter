@@ -59,9 +59,9 @@ There's no build step — open the files directly or use any static file server.
 **Option 1: Firebase emulator (recommended)**
 ```bash
 # Install the Firebase CLI (once)
-npm install -g firebase-tools
+npm install
 
-firebase serve
+npx firebase serve
 ```
 App runs at `http://localhost:5000`.
 
