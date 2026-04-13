@@ -125,7 +125,7 @@ function loadAllRoutes() {
 
   // Extract the API key from the already-loaded Maps JS script tag
   const apiKey = new URL(
-    document.querySelector('script[src*="maps.googleapis.com"]').src
+    document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]').src
   ).searchParams.get('key');
 
   const combinedBounds = new google.maps.LatLngBounds();
@@ -163,6 +163,7 @@ function loadAllRoutes() {
         destination:        { placeId: dest.placeId },
         travelMode:         'DRIVE',
         routingPreference:  'TRAFFIC_AWARE_OPTIMAL',
+        routeModifiers:     { avoidTolls: true },
       }),
     })
       .then(res => res.json())
