@@ -3,25 +3,25 @@
 // =============================================================================
 
 const CONFIG = {
-  // Your work address
-  origin: 'YOUR WORK ADDRESS',  // e.g. '123 Main St, Seattle, WA 98101'
+  // Your work location — use a Google Maps Place ID (e.g. 'ChIJN1t_tDeuEmsRUsoyG83frY4')
+  originPlaceId: 'YOUR_WORK_PLACE_ID',
 
   destinations: [
     {
       name:    'Home',
-      address: 'YOUR HOME ADDRESS',
+      placeId: 'YOUR_HOME_PLACE_ID',
       color:   '#4285F4',   // Blue
       emoji:   '🏠',
     },
     {
       name:    'Gym',
-      address: 'YOUR GYM ADDRESS',
+      placeId: 'YOUR_GYM_PLACE_ID',
       color:   '#34A853',   // Green
       emoji:   '💪',
     },
     {
       name:    'Friends',
-      address: 'YOUR FRIENDS ADDRESS',
+      placeId: 'YOUR_FRIENDS_PLACE_ID',
       color:   '#EA4335',   // Red
       emoji:   '👥',
     },
@@ -159,11 +159,10 @@ function loadAllRoutes() {
         ].join(','),
       },
       body: JSON.stringify({
-        origin:             { address: CONFIG.origin },
-        destination:        { address: dest.address },
+        origin:             { placeId: CONFIG.originPlaceId },
+        destination:        { placeId: dest.placeId },
         travelMode:         'DRIVE',
-        routingPreference:  'TRAFFIC_AWARE',
-        departureTime:      new Date().toISOString(),
+        routingPreference:  'TRAFFIC_AWARE_OPTIMAL',
       }),
     })
       .then(res => res.json())
