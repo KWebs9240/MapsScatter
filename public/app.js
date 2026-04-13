@@ -5,25 +5,29 @@
 const CONFIG = {
   // Your work location — use a Google Maps Place ID (e.g. 'ChIJN1t_tDeuEmsRUsoyG83frY4')
   originPlaceId: 'YOUR_WORK_PLACE_ID',
+  originLocation:  { lat: 39.5, lng: -98.35 },
 
   destinations: [
     {
-      name:    'Home',
-      placeId: 'YOUR_HOME_PLACE_ID',
-      color:   '#4285F4',   // Blue
-      emoji:   '🏠',
+      name:     'Home',
+      placeId:  'YOUR_HOME_PLACE_ID',
+      location: { lat: 39.5, lng: -98.35 },
+      color:    '#4285F4',   // Blue
+      emoji:    '🏠',
     },
+    // {
+    //   name:     'Gym',
+    //   placeId:  'YOUR_GYM_PLACE_ID',
+    //   location: { lat: 39.5, lng: -98.35 },
+    //   color:    '#34A853',   // Green
+    //   emoji:    '💪',
+    // },
     {
-      name:    'Gym',
-      placeId: 'YOUR_GYM_PLACE_ID',
-      color:   '#34A853',   // Green
-      emoji:   '💪',
-    },
-    {
-      name:    'Friends',
-      placeId: 'YOUR_FRIENDS_PLACE_ID',
-      color:   '#EA4335',   // Red
-      emoji:   '👥',
+      name:     'Friends',
+      placeId:  'YOUR_FRIENDS_PLACE_ID',
+      location: { lat: 39.5, lng: -98.35 },
+      color:    '#EA4335',   // Red
+      emoji:    '👥',
     },
   ],
 
@@ -49,7 +53,7 @@ let activeIndex   = -1;  // -1 = all routes shown
 function initMap() {
   map = new google.maps.Map(document.getElementById('map'), {
     zoom: 12,
-    center: { lat: 39.5, lng: -98.35 }, // Generic US center until routes load
+    center: { lat: 39.5, lng: -98.35 }, // Overridden immediately by previewBounds()
     disableDefaultUI: true,
     zoomControl: true,
     zoomControlOptions: {
@@ -63,11 +67,32 @@ function initMap() {
     ],
   });
 
+  previewBounds();
   buildCards();
   loadAllRoutes();
 
   document.getElementById('refresh-btn').addEventListener('click', loadAllRoutes);
   setInterval(loadAllRoutes, CONFIG.autoRefreshMs);
+}
+
+// =============================================================================
+// Geocode all place IDs and fit the map immediately so the right area is
+// visible before the slower Routes API calls finish.
+// =============================================================================
+
+function previewBounds() {
+  const bounds = new google.maps.LatLngBounds();
+
+  if (CONFIG.originLocation) {
+    bounds.extend(CONFIG.originLocation);
+  } 
+  CONFIG.destinations.forEach(dest => {
+    if (dest.location) {
+      bounds.extend(dest.location)
+    };
+  });
+
+  if (!bounds.isEmpty()) map.fitBounds(bounds, 52);
 }
 
 // =============================================================================
