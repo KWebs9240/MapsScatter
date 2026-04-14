@@ -11,11 +11,11 @@ const MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
 //
 // Setup:
 //   1. Enable Firestore in the Firebase Console (Build → Firestore Database)
-//   2. Set rules to allow public read/write on the cache collection:
+//   2. Set rules to allow public read/write on the history collection:
 //        rules_version = '2';
 //        service cloud.firestore {
 //          match /databases/{database}/documents {
-//            match /routeCache/{doc} {
+//            match /routeHistory/{doc} {
 //              allow read, write: if true;
 //            }
 //          }
@@ -50,11 +50,13 @@ const CONFIG = {
   ],
 
   // How often to automatically refresh travel times (milliseconds)
-  autoRefreshMs: 5 * 60 * 1000,  // 5 minutes
+  // Setting to 500 because I want the whole thing controlled pretty manually for now
+  autoRefreshMs: 500 * 60 * 1000,  // 500 minutes
 
   // How long a cached result is considered fresh (milliseconds).
   // Defaults to autoRefreshMs if omitted.
-  cacheMaxAgeMs: 5 * 60 * 1000,  // 5 minutes
+  // Setting to 500 because I want the whole thing controlled pretty manually for now
+  cacheMaxAgeMs: 500 * 60 * 1000,  // 500 minutes
 };
 
 // Dynamically inject the Google Maps SDK so the key lives only in this file

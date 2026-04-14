@@ -101,6 +101,7 @@ async function loadAllRoutes(forceRefresh = false) {
   destMarkers.forEach(m => m.setMap(null));
   destMarkers = [];
   if (originMarker) { originMarker.setMap(null); originMarker = null; }
+  hideHistoryPanel();
 
   // Reset card states
   document.querySelectorAll('.card').forEach(c => {
@@ -305,6 +306,7 @@ function selectCard(index) {
     activeIndex = -1;
     document.querySelectorAll('.card').forEach(c => c.classList.remove('active', 'dimmed'));
     setPolylineStyles(-1);
+    hideHistoryPanel();
 
     const allBounds = new google.maps.LatLngBounds();
     routeResults.forEach(r => {
@@ -327,6 +329,8 @@ function selectCard(index) {
     routeResults[index].path.forEach(p => bounds.extend(p));
     map.fitBounds(bounds, 52);
   }
+
+  showHistoryPanel(index);
 }
 
 function setPolylineStyles(activeIdx) {
@@ -342,50 +346,132 @@ function setPolylineStyles(activeIdx) {
 }
 
 // =============================================================================
-// Route cache — Firestore REST API
+// Route history — Firestore REST API
 // =============================================================================
 
-// Stored as a single document: routeCache/latest
-// The entire payload is serialized as a JSON string in one Firestore string
-// field to avoid mapping every nested value to Firestore's typed format.
+// Each route fetch is appended as a new document in the `routeHistory`
+// collection (auto-generated ID). Two top-level Firestore fields:
+//   timestamp : integerValue  — ms since epoch, used for ordering queries
+//   payload   : stringValue   — full JSON snapshot ({ timestamp, routes[] })
 //
-// Payload shape (JSON-stringified):
-// {
-//   timestamp: <ms>,
-//   routes: [
-//     { duration, distanceMeters, encodedPolyline, startLat, startLng, endLat, endLng }
-//     | null   // null = error for this destination
-//   ]
-// }
+// routes[] element shape:
+//   { duration, distanceMeters, encodedPolyline, startLat, startLng, endLat, endLng }
+//   | null  (null = error for that destination on that fetch)
 
-function firestoreDocUrl() {
-  return `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/routeCache/latest`;
+const FIRESTORE_BASE =
+  `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+
+// Shared helper: run a descending-timestamp query on routeHistory
+function queryHistory(limit) {
+  return fetch(`${FIRESTORE_BASE}:runQuery`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      structuredQuery: {
+        from:    [{ collectionId: 'routeHistory' }],
+        orderBy: [{ field: { fieldPath: 'timestamp' }, direction: 'DESCENDING' }],
+        limit,
+      },
+    }),
+  });
 }
 
+// Returns the most-recent snapshot payload for fresh-cache checks, or null
 async function fetchCachedRoutes() {
   if (!FIREBASE_PROJECT_ID) return null;
   try {
-    const res = await fetch(firestoreDocUrl());
-    if (!res.ok) return null;  // 404 = no cache written yet
-    const doc = await res.json();
+    const res = await queryHistory(1);
+    if (!res.ok) return null;
+    const results = await res.json();
+    const doc = results[0]?.document;
+    if (!doc) return null;
     return JSON.parse(doc.fields.payload.stringValue);
   } catch (e) {
     return null;
   }
 }
 
+// Appends a new history document (does NOT overwrite previous ones)
 function saveCachedRoutes(routes) {
   if (!FIREBASE_PROJECT_ID) return;
-  fetch(firestoreDocUrl(), {
-    method:  'PATCH',
+  const ts = Date.now();
+  fetch(`${FIRESTORE_BASE}/routeHistory`, {
+    method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       fields: {
-        payload: { stringValue: JSON.stringify({ timestamp: Date.now(), routes }) },
+        timestamp: { integerValue: String(ts) },
+        payload:   { stringValue: JSON.stringify({ timestamp: ts, routes }) },
       },
     }),
-  }).catch(e => console.warn('Failed to save route cache:', e));
+  }).catch(e => console.warn('Failed to save route history:', e));
 }
+
+// Returns last 50 { timestamp, duration } records for one destination index
+async function fetchRouteHistory(destIndex) {
+  if (!FIREBASE_PROJECT_ID) return [];
+  try {
+    const res = await queryHistory(50);
+    if (!res.ok) return [];
+    const results = await res.json();
+    return results
+      .filter(r => r.document)
+      .map(r => {
+        const ts      = parseInt(r.document.fields.timestamp.integerValue, 10);
+        const payload = JSON.parse(r.document.fields.payload.stringValue);
+        const route   = Array.isArray(payload.routes) ? payload.routes[destIndex] : null;
+        return route ? { timestamp: ts, duration: route.duration } : null;
+      })
+      .filter(Boolean);
+  } catch (e) {
+    return [];
+  }
+}
+
+// =============================================================================
+// History panel
+// =============================================================================
+
+async function showHistoryPanel(destIndex) {
+  const panel = document.getElementById('history-panel');
+  const title = document.getElementById('history-title');
+  const list  = document.getElementById('history-list');
+  const dest  = CONFIG.destinations[destIndex];
+
+  title.textContent = `${dest.emoji} ${dest.name}`;
+  title.style.color = dest.color;
+  list.innerHTML = '<li class="history-loading">Loading history\u2026</li>';
+  panel.classList.add('visible');
+
+  const history = await fetchRouteHistory(destIndex);
+
+  // Guard: user may have dismissed the panel while the fetch was in flight
+  if (!panel.classList.contains('visible')) return;
+
+  if (history.length === 0) {
+    list.innerHTML = '<li class="history-empty">No history yet.</li>';
+    return;
+  }
+
+  list.innerHTML = history.map(h => {
+    const d       = new Date(h.timestamp);
+    const dateStr = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const dur     = parseDuration(h.duration);
+    return `<li class="history-item">
+      <span class="history-when">${dateStr}, ${timeStr}</span>
+      <span class="history-duration">${dur.text}</span>
+    </li>`;
+  }).join('');
+}
+
+function hideHistoryPanel() {
+  document.getElementById('history-panel').classList.remove('visible');
+}
+
+// =============================================================================
+// Render from Firestore cache
+// =============================================================================
 
 function renderFromCache(cached) {
   const combinedBounds = new google.maps.LatLngBounds();

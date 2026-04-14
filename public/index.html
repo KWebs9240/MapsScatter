@@ -35,6 +35,14 @@
 
   <div id="map"></div>
 
+  <div id="history-panel" class="history-panel">
+    <div class="history-header">
+      <span id="history-title" class="history-title"></span>
+      <button class="history-close" onclick="hideHistoryPanel()" aria-label="Close">&#x2715;</button>
+    </div>
+    <ul id="history-list" class="history-list"></ul>
+  </div>
+
   <!--
     SETUP REQUIRED:
     Copy config.example.js to config.js and fill in your API key and Place IDs.
