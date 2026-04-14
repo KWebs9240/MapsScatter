@@ -1,41 +1,4 @@
 // =============================================================================
-// CONFIGURATION — update these with your real addresses before deploying
-// =============================================================================
-
-const CONFIG = {
-  // Your work location — use a Google Maps Place ID (e.g. 'ChIJN1t_tDeuEmsRUsoyG83frY4')
-  originPlaceId: 'YOUR_WORK_PLACE_ID',
-  originLocation:  { lat: 39.5, lng: -98.35 },
-
-  destinations: [
-    {
-      name:     'Home',
-      placeId:  'YOUR_HOME_PLACE_ID',
-      location: { lat: 39.5, lng: -98.35 },
-      color:    '#4285F4',   // Blue
-      emoji:    '🏠',
-    },
-    // {
-    //   name:     'Gym',
-    //   placeId:  'YOUR_GYM_PLACE_ID',
-    //   location: { lat: 39.5, lng: -98.35 },
-    //   color:    '#34A853',   // Green
-    //   emoji:    '💪',
-    // },
-    {
-      name:     'Friends',
-      placeId:  'YOUR_FRIENDS_PLACE_ID',
-      location: { lat: 39.5, lng: -98.35 },
-      color:    '#EA4335',   // Red
-      emoji:    '👥',
-    },
-  ],
-
-  // How often to automatically refresh travel times (milliseconds)
-  autoRefreshMs: 5 * 60 * 1000,  // 5 minutes
-};
-
-// =============================================================================
 // State
 // =============================================================================
 
@@ -148,10 +111,7 @@ function loadAllRoutes() {
     c.querySelector('.card-dist').textContent = '';
   });
 
-  // Extract the API key from the already-loaded Maps JS script tag
-  const apiKey = new URL(
-    document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]').src
-  ).searchParams.get('key');
+  const apiKey = MAPS_API_KEY;
 
   const combinedBounds = new google.maps.LatLngBounds();
   let doneCount = 0;

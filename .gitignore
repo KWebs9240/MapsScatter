@@ -12,6 +12,7 @@ ui-debug.log
 .env
 .env.local
 .env.*.local
+public/config.js
 
 # OS
 .DS_Store
