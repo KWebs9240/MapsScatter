@@ -39,6 +39,8 @@ const CONFIG = {
       color:    '#4285F4',   // Blue
       emoji:    '🏠',
     },
+    // Letting Claude do it's thing, we're matching based off index.  So if I add something out of order, then the history will be a mess
+    // So either add in order, or address when it happens
     // Add more destinations here — the UI is fully data-driven from this array.
     // {
     //   name:     'Gym',
