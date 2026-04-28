@@ -80,18 +80,18 @@ npx serve public
 
 ## Deploying to Firebase Hosting
 
-```bash
+```powershell
 # Install the Firebase CLI (once)
 npm install -g firebase-tools
 
 # Log in to Firebase
-firebase login
+npx firebase login
 
 # Connect to your Firebase project (run from repo root)
-firebase use --add
+npx firebase use --add
 
 # Deploy
-firebase deploy
+npx firebase deploy
 ```
 
 Your app will be live at `https://your-project.web.app`.
