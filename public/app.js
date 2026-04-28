@@ -3,11 +3,16 @@
 // =============================================================================
 
 let map;
-let polylines    = [];   // One Polyline per destination
-let routeResults = [];   // Cached route data; null = error, undefined = pending
+let polylines     = [];   // One Polyline per destination
+let routeResults  = [];   // Cached route data; null = error, undefined = pending
 let originMarker  = null;
 let destMarkers   = [];
-let activeIndex   = -1;  // -1 = all routes shown
+let activeIndex   = -1;   // -1 = all routes shown
+let activeCategory = 0;
+
+function getDestinations() {
+  return CONFIG.categories[activeCategory].destinations;
+}
 
 // =============================================================================
 // Entry point — called by the Google Maps script once it has loaded
@@ -31,6 +36,7 @@ function initMap() {
   });
 
   previewBounds();
+  buildCategoryTabs();
   buildCards();
   loadAllRoutes();
 
@@ -48,8 +54,8 @@ function previewBounds() {
 
   if (CONFIG.originLocation) {
     bounds.extend(CONFIG.originLocation);
-  } 
-  CONFIG.destinations.forEach(dest => {
+  }
+  getDestinations().forEach(dest => {
     if (dest.location) {
       bounds.extend(dest.location)
     };
@@ -62,9 +68,28 @@ function previewBounds() {
 // Build the card UI from CONFIG
 // =============================================================================
 
+function buildCategoryTabs() {
+  const wrapper = document.getElementById('tabs-wrapper');
+  if (CONFIG.categories.length <= 1) return;
+  document.body.classList.add('has-tabs');
+  wrapper.innerHTML = CONFIG.categories.map((cat, i) =>
+    `<button class="tab-btn${i === activeCategory ? ' active' : ''}" onclick="switchCategory(${i})">${cat.name}</button>`
+  ).join('');
+}
+
+function switchCategory(index) {
+  if (index === activeCategory) return;
+  activeCategory = index;
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === index);
+  });
+  buildCards();
+  loadAllRoutes();
+}
+
 function buildCards() {
   const container = document.getElementById('cards-scroll');
-  container.innerHTML = CONFIG.destinations
+  container.innerHTML = getDestinations()
     .map(
       (dest, i) => `
         <div class="card loading" id="card-${i}" onclick="selectCard(${i})"
@@ -94,8 +119,8 @@ async function loadAllRoutes(forceRefresh = false) {
 
   // Remove old polylines and markers
   polylines.forEach(p => p && p.setMap(null));
-  polylines    = new Array(CONFIG.destinations.length).fill(null);
-  routeResults = new Array(CONFIG.destinations.length).fill(undefined);
+  polylines    = new Array(getDestinations().length).fill(null);
+  routeResults = new Array(getDestinations().length).fill(undefined);
   activeIndex  = -1;
 
   destMarkers.forEach(m => m.setMap(null));
@@ -119,7 +144,7 @@ async function loadAllRoutes(forceRefresh = false) {
   if (
     cached &&
     Array.isArray(cached.routes) &&
-    cached.routes.length === CONFIG.destinations.length &&
+    cached.routes.length === getDestinations().length &&
     (Date.now() - cached.timestamp) < maxAge
   ) {
     renderFromCache(cached);
@@ -132,12 +157,12 @@ async function loadAllRoutes(forceRefresh = false) {
   const apiKey = MAPS_API_KEY;
 
   const combinedBounds = new google.maps.LatLngBounds();
-  const cacheData      = new Array(CONFIG.destinations.length).fill(null);
+  const cacheData      = new Array(getDestinations().length).fill(null);
   let doneCount = 0;
 
   function onSettled() {
     doneCount++;
-    if (doneCount === CONFIG.destinations.length) {
+    if (doneCount === getDestinations().length) {
       if (!combinedBounds.isEmpty()) {
         map.fitBounds(combinedBounds, 52);
       }
@@ -149,7 +174,7 @@ async function loadAllRoutes(forceRefresh = false) {
     }
   }
 
-  CONFIG.destinations.forEach((dest, i) => {
+  getDestinations().forEach((dest, i) => {
     fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
       method: 'POST',
       headers: {
@@ -277,7 +302,7 @@ function placeMarkers() {
   // Destination markers — one colored dot per successful route
   routeResults.forEach((r, i) => {
     if (!r) return;
-    const dest   = CONFIG.destinations[i];
+    const dest   = getDestinations()[i];
     const marker = new google.maps.Marker({
       position: r.endLocation,
       map,
@@ -338,7 +363,7 @@ function setPolylineStyles(activeIdx) {
     if (!p) return;
     const highlighted = activeIdx === -1 || i === activeIdx;
     p.setOptions({
-      strokeColor:   CONFIG.destinations[i].color,
+      strokeColor:   getDestinations()[i].color,
       strokeOpacity: highlighted ? 0.9  : 0.15,
       strokeWeight:  highlighted ? 6    : 3,
     });
@@ -436,7 +461,7 @@ async function showHistoryPanel(destIndex) {
   const panel = document.getElementById('history-panel');
   const title = document.getElementById('history-title');
   const list  = document.getElementById('history-list');
-  const dest  = CONFIG.destinations[destIndex];
+  const dest  = getDestinations()[destIndex];
 
   title.textContent = `${dest.emoji} ${dest.name}`;
   title.style.color = dest.color;
@@ -479,7 +504,7 @@ function renderFromCache(cached) {
   cached.routes.forEach((r, i) => {
     const card = document.getElementById(`card-${i}`);
     card.classList.remove('loading');
-    const dest = CONFIG.destinations[i];
+    const dest = getDestinations()[i];
 
     if (r) {
       const decodedPath = google.maps.geometry.encoding.decodePath(r.encodedPolyline);
