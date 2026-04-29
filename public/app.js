@@ -380,14 +380,18 @@ function setPolylineStyles(activeIdx) {
 const FIRESTORE_BASE =
   `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
-// Shared helper: run a descending-timestamp query on routeHistory
+function getCategoryCollectionId() {
+  return 'routeHistory_' + getCategory().name.toLowerCase().replace(/\s+/g, '_');
+}
+
+// Shared helper: run a descending-timestamp query for the active category
 function queryHistory(limit) {
   return fetch(`${FIRESTORE_BASE}:runQuery`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       structuredQuery: {
-        from:    [{ collectionId: 'routeHistory' }],
+        from:    [{ collectionId: getCategoryCollectionId() }],
         orderBy: [{ field: { fieldPath: 'timestamp' }, direction: 'DESCENDING' }],
         limit,
       },
@@ -414,7 +418,7 @@ async function fetchCachedRoutes() {
 function saveCachedRoutes(routes) {
   if (!FIREBASE_PROJECT_ID) return;
   const ts = Date.now();
-  fetch(`${FIRESTORE_BASE}/routeHistory`, {
+  fetch(`${FIRESTORE_BASE}/${getCategoryCollectionId()}`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
