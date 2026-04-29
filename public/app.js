@@ -10,8 +10,12 @@ let destMarkers   = [];
 let activeIndex   = -1;   // -1 = all routes shown
 let activeCategory = 0;
 
+function getCategory() {
+  return CONFIG.categories[activeCategory];
+}
+
 function getDestinations() {
-  return CONFIG.categories[activeCategory].destinations;
+  return getCategory().destinations;
 }
 
 // =============================================================================
@@ -52,8 +56,8 @@ function initMap() {
 function previewBounds() {
   const bounds = new google.maps.LatLngBounds();
 
-  if (CONFIG.originLocation) {
-    bounds.extend(CONFIG.originLocation);
+  if (getCategory().originLocation) {
+    bounds.extend(getCategory().originLocation);
   }
   getDestinations().forEach(dest => {
     if (dest.location) {
@@ -189,7 +193,7 @@ async function loadAllRoutes(forceRefresh = false) {
         ].join(','),
       },
       body: JSON.stringify({
-        origin:             { placeId: CONFIG.originPlaceId },
+        origin:             { placeId: getCategory().originPlaceId },
         destination:        { placeId: dest.placeId },
         travelMode:         'DRIVE',
         routingPreference:  'TRAFFIC_AWARE_OPTIMAL',

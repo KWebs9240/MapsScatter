@@ -26,28 +26,43 @@ const MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
 const FIREBASE_PROJECT_ID = '';
 
 const CONFIG = {
-  // Your work location — find Place IDs at:
+  // Each category has its own origin and destinations list.
+  // Find Place IDs at:
   // https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder
-  originPlaceId:   'YOUR_ORIGIN_PLACE_ID',
-  originLocation:  {"lat": 0, "lng": 0 },  // Optional: speeds up initial map render
-
-  destinations: [
+  //
+  // Destinations are matched to history by index within their category, so
+  // don't reorder entries — append new ones at the end instead.
+  categories: [
     {
-      name:     'Home',
-      placeId:  'YOUR_HOME_PLACE_ID',
-      location: {"lat": 0, "lng": 0 },     // Optional: speeds up initial map render
-      color:    '#4285F4',   // Blue
-      emoji:    '🏠',
+      name:           'After Work',
+      originPlaceId:  'YOUR_ORIGIN_PLACE_ID',
+      originLocation: {"lat": 0, "lng": 0 },  // Optional: speeds up initial map render
+      destinations: [
+        {
+          name:     'Home',
+          placeId:  'YOUR_HOME_PLACE_ID',
+          location: {"lat": 0, "lng": 0 },    // Optional: speeds up initial map render
+          color:    '#4285F4',   // Blue
+          emoji:    '🏠',
+        },
+        // Add more destinations here — the UI is fully data-driven from this array.
+        // {
+        //   name:     'Gym',
+        //   placeId:  'YOUR_GYM_PLACE_ID',
+        //   location: {"lat": 0, "lng": 0 },
+        //   color:    '#EA4335',   // Red
+        //   emoji:    '💪',
+        // },
+      ],
     },
-    // Letting Claude do it's thing, we're matching based off index.  So if I add something out of order, then the history will be a mess
-    // So either add in order, or address when it happens
-    // Add more destinations here — the UI is fully data-driven from this array.
+    // Add more categories with different origins below. Example:
     // {
-    //   name:     'Gym',
-    //   placeId:  'YOUR_GYM_PLACE_ID',
-    //   location: {"lat": 0, "lng": 0 },
-    //   color:    '#EA4335',   // Red
-    //   emoji:    '💪',
+    //   name:           'From Home',
+    //   originPlaceId:  'YOUR_HOME_PLACE_ID',
+    //   originLocation: {"lat": 0, "lng": 0 },
+    //   destinations: [
+    //     { name: 'Gym', placeId: 'YOUR_GYM_PLACE_ID', location: { lat: 0, lng: 0 }, color: '#EA4335', emoji: '💪' },
+    //   ],
     // },
   ],
 

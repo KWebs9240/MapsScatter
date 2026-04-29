@@ -21,7 +21,7 @@ The Firebase project is `mapsfrontend` (see `.firebaserc`). The `public/` direct
 Two files need real values before the app works:
 
 1. **`public/index.html`** — Replace `YOUR_GOOGLE_MAPS_API_KEY` in the Maps script tag. Required Google Cloud APIs: Maps JavaScript API + Routes API.
-2. **`public/app.js`** — Update the `CONFIG` object at the top with Google Maps Place IDs for `originPlaceId` and each destination's `placeId`. Find Place IDs via the [Place ID Finder](https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder).
+2. **`public/config.js`** — Copy `config.example.js` to `config.js` and fill in your API key and Place IDs. Each category has its own `originPlaceId` and `originLocation`. Find Place IDs via the [Place ID Finder](https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder).
 
 ## Architecture
 
@@ -53,7 +53,7 @@ Tapping a card calls `selectCard(index)`. Tapping the active card again resets t
 
 ## Extending Destinations
 
-Add a new entry to `CONFIG.destinations` in `app.js`:
+Add a new entry to a category's `destinations` array in `config.js`:
 ```js
 { name: 'Label', placeId: 'ChIJ...', color: '#HEXCOL', emoji: '🏷️' }
 ```
