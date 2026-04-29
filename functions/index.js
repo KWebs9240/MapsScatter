@@ -14,16 +14,16 @@ const CATEGORIES = [
     routes: [
       { name: 'The Apt',     origin: { placeId: 'ChIJZ2w2FseCToYRGzso_Erkmh0' }, destination: { placeId: 'ChIJu75pRICfToYRdmLWE1YKJOQ' } },
       { name: 'Honey Butt', origin: { placeId: 'ChIJZ2w2FseCToYRGzso_Erkmh0' }, destination: { placeId: 'ChIJC9EwSwwfTIYRcBAA2TAZSOo' } },
-      { name: 'Kwebby',     origin: { placeId: 'ChIJu75pRICfToYRdmLWE1YKJOQ' }, destination: { placeId: 'ChIJC9EwSwwfTIYRcBAA2TAZSOo' } },
+      // { name: 'Kwebby',     origin: { placeId: 'ChIJu75pRICfToYRdmLWE1YKJOQ' }, destination: { placeId: 'ChIJC9EwSwwfTIYRcBAA2TAZSOo' } },
     ],
   },
-  {
-    name: 'Morning Commute',
-    routes: [
-      { name: 'The Apt',     origin: { placeId: 'ChIJu75pRICfToYRdmLWE1YKJOQ' }, destination: { placeId: 'ChIJZ2w2FseCToYRGzso_Erkmh0' } },
-      { name: 'Honey Butt', origin: { placeId: 'ChIJC9EwSwwfTIYRcBAA2TAZSOo' }, destination: { placeId: 'ChIJZ2w2FseCToYRGzso_Erkmh0' } },
-    ],
-  },
+  // {
+  //   name: 'Morning Commute',
+  //   routes: [
+  //     { name: 'The Apt',     origin: { placeId: 'ChIJu75pRICfToYRdmLWE1YKJOQ' }, destination: { placeId: 'ChIJZ2w2FseCToYRGzso_Erkmh0' } },
+  //     { name: 'Honey Butt', origin: { placeId: 'ChIJC9EwSwwfTIYRcBAA2TAZSOo' }, destination: { placeId: 'ChIJZ2w2FseCToYRGzso_Erkmh0' } },
+  //   ],
+  // },
 ];
 
 const ROUTES_API_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes';
