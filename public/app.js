@@ -45,7 +45,6 @@ function initMap() {
   loadAllRoutes();
 
   document.getElementById('refresh-btn').addEventListener('click', () => loadAllRoutes(true));
-  setInterval(loadAllRoutes, CONFIG.autoRefreshMs);
 }
 
 // =============================================================================
@@ -140,13 +139,11 @@ async function loadAllRoutes(forceRefresh = false) {
 
   // Use cached data if it's fresh and covers the same destinations.
   // forceRefresh=true (manual button tap) always bypasses the cache.
-  const maxAge = CONFIG.cacheMaxAgeMs ?? CONFIG.autoRefreshMs;
   const cached = forceRefresh ? null : await fetchCachedRoutes();
   if (
     cached &&
     Array.isArray(cached.routes) &&
-    cached.routes.length === getDestinations().length &&
-    (Date.now() - cached.timestamp) < maxAge
+    cached.routes.length === getDestinations().length
   ) {
     renderFromCache(cached);
     btn.disabled = false;
