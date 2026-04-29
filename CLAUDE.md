@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 firebase deploy
 ```
 
-The Firebase project is `mapsfrontend` (see `.firebaserc`). The `public/` directory is the hosting root.
+The Firebase project is `mapsscattertesting` (see `.firebaserc`). The `public/` directory is the hosting root.
 
 ## Required Setup (Before Deploying)
 

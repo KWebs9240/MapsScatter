@@ -380,18 +380,20 @@ function setPolylineStyles(activeIdx) {
 const FIRESTORE_BASE =
   `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
-function getCategoryCollectionId() {
-  return 'routeHistory_' + getCategory().name.toLowerCase().replace(/\s+/g, '_');
+function getCategorySlug() {
+  return getCategory().name.toLowerCase().replace(/\s+/g, '_');
 }
 
-// Shared helper: run a descending-timestamp query for the active category
+// Shared helper: run a descending-timestamp query for the active category.
+// Data lives at routeHistory/{categorySlug}/entries/{docId} so that
+// Firestore rules can match on /routeHistory/{category}/entries/{doc}.
 function queryHistory(limit) {
-  return fetch(`${FIRESTORE_BASE}:runQuery`, {
+  return fetch(`${FIRESTORE_BASE}/routeHistory/${getCategorySlug()}:runQuery`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       structuredQuery: {
-        from:    [{ collectionId: getCategoryCollectionId() }],
+        from:    [{ collectionId: 'entries' }],
         orderBy: [{ field: { fieldPath: 'timestamp' }, direction: 'DESCENDING' }],
         limit,
       },
@@ -418,7 +420,7 @@ async function fetchCachedRoutes() {
 function saveCachedRoutes(routes) {
   if (!FIREBASE_PROJECT_ID) return;
   const ts = Date.now();
-  fetch(`${FIRESTORE_BASE}/${getCategoryCollectionId()}`, {
+  fetch(`${FIRESTORE_BASE}/routeHistory/${getCategorySlug()}/entries`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
