@@ -51,10 +51,14 @@ All fetches run in parallel; `onSettled()` is a counter-based callback that trig
 
 Tapping a card calls `selectCard(index)`. Tapping the active card again resets to showing all routes. This toggles `.active`/`.dimmed` CSS classes and adjusts `strokeOpacity`/`strokeWeight` on the polylines.
 
-## Extending Destinations
+## Adding Routes
 
-Add a new entry to a category's `destinations` array in `config.js`:
+Add a new entry to a category's `routes` array in `config.js`:
 ```js
-{ name: 'Label', placeId: 'ChIJ...', color: '#HEXCOL', emoji: '🏷️' }
+{
+  name: 'Label', color: '#HEXCOL', emoji: '🏷️',
+  origin:      { placeId: 'ChIJ...', location: { lat: 0, lng: 0 } },
+  destination: { placeId: 'ChIJ...', location: { lat: 0, lng: 0 } },
+}
 ```
 No other changes needed — card UI and route loading are fully data-driven from this array.

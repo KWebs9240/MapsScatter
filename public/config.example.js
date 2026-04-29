@@ -26,42 +26,40 @@ const MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
 const FIREBASE_PROJECT_ID = '';
 
 const CONFIG = {
-  // Each category has its own origin and destinations list.
-  // Find Place IDs at:
+  // Each category groups related route pairs. Each route is a source→destination
+  // pair with its own origin. Find Place IDs at:
   // https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder
   //
-  // Destinations are matched to history by index within their category, so
+  // Routes are matched to history by index within their category, so
   // don't reorder entries — append new ones at the end instead.
   categories: [
     {
-      name:           'After Work',
-      originPlaceId:  'YOUR_ORIGIN_PLACE_ID',
-      originLocation: {"lat": 0, "lng": 0 },  // Optional: speeds up initial map render
-      destinations: [
+      name: 'After Work',
+      routes: [
         {
-          name:     'Home',
-          placeId:  'YOUR_HOME_PLACE_ID',
-          location: {"lat": 0, "lng": 0 },    // Optional: speeds up initial map render
-          color:    '#4285F4',   // Blue
-          emoji:    '🏠',
+          name:  'Home',
+          color: '#4285F4',  // Blue
+          emoji: '🏠',
+          origin:      { placeId: 'YOUR_WORK_PLACE_ID',  location: {"lat": 0, "lng": 0 } },  // Optional: location speeds up initial map render
+          destination: { placeId: 'YOUR_HOME_PLACE_ID',  location: {"lat": 0, "lng": 0 } },
         },
-        // Add more destinations here — the UI is fully data-driven from this array.
+        // Add more routes here — the UI is fully data-driven from this array.
         // {
-        //   name:     'Gym',
-        //   placeId:  'YOUR_GYM_PLACE_ID',
-        //   location: {"lat": 0, "lng": 0 },
-        //   color:    '#EA4335',   // Red
-        //   emoji:    '💪',
+        //   name: 'Gym', color: '#EA4335', emoji: '💪',
+        //   origin:      { placeId: 'YOUR_WORK_PLACE_ID', location: { lat: 0, lng: 0 } },
+        //   destination: { placeId: 'YOUR_GYM_PLACE_ID',  location: { lat: 0, lng: 0 } },
         // },
       ],
     },
-    // Add more categories with different origins below. Example:
+    // Add more categories below. Example:
     // {
-    //   name:           'From Home',
-    //   originPlaceId:  'YOUR_HOME_PLACE_ID',
-    //   originLocation: {"lat": 0, "lng": 0 },
-    //   destinations: [
-    //     { name: 'Gym', placeId: 'YOUR_GYM_PLACE_ID', location: { lat: 0, lng: 0 }, color: '#EA4335', emoji: '💪' },
+    //   name: 'Morning Commute',
+    //   routes: [
+    //     {
+    //       name: 'Home → Work', color: '#4285F4', emoji: '🏢',
+    //       origin:      { placeId: 'YOUR_HOME_PLACE_ID', location: { lat: 0, lng: 0 } },
+    //       destination: { placeId: 'YOUR_WORK_PLACE_ID', location: { lat: 0, lng: 0 } },
+    //     },
     //   ],
     // },
   ],

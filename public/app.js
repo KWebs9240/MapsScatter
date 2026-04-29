@@ -5,7 +5,7 @@
 let map;
 let polylines     = [];   // One Polyline per destination
 let routeResults  = [];   // Cached route data; null = error, undefined = pending
-let originMarker  = null;
+let originMarkers = [];
 let destMarkers   = [];
 let activeIndex   = -1;   // -1 = all routes shown
 let activeCategory = 0;
@@ -15,7 +15,7 @@ function getCategory() {
 }
 
 function getDestinations() {
-  return getCategory().destinations;
+  return getCategory().routes;
 }
 
 // =============================================================================
@@ -56,13 +56,9 @@ function initMap() {
 function previewBounds() {
   const bounds = new google.maps.LatLngBounds();
 
-  if (getCategory().originLocation) {
-    bounds.extend(getCategory().originLocation);
-  }
   getDestinations().forEach(dest => {
-    if (dest.location) {
-      bounds.extend(dest.location)
-    };
+    if (dest.origin?.location)      bounds.extend(dest.origin.location);
+    if (dest.destination?.location) bounds.extend(dest.destination.location);
   });
 
   if (!bounds.isEmpty()) map.fitBounds(bounds, 52);
@@ -129,7 +125,8 @@ async function loadAllRoutes(forceRefresh = false) {
 
   destMarkers.forEach(m => m.setMap(null));
   destMarkers = [];
-  if (originMarker) { originMarker.setMap(null); originMarker = null; }
+  originMarkers.forEach(m => m.setMap(null));
+  originMarkers = [];
   hideHistoryPanel();
 
   // Reset card states
@@ -193,8 +190,8 @@ async function loadAllRoutes(forceRefresh = false) {
         ].join(','),
       },
       body: JSON.stringify({
-        origin:             { placeId: getCategory().originPlaceId },
-        destination:        { placeId: dest.placeId },
+        origin:             { placeId: dest.origin.placeId },
+        destination:        { placeId: dest.destination.placeId },
         travelMode:         'DRIVE',
         routingPreference:  'TRAFFIC_AWARE_OPTIMAL',
         routeModifiers:     { avoidTolls: true },
@@ -282,46 +279,39 @@ async function loadAllRoutes(forceRefresh = false) {
 // =============================================================================
 
 function placeMarkers() {
-  // Origin marker — pulled from the first successful result's startLocation
-  for (const r of routeResults) {
-    if (r) {
-      originMarker = new google.maps.Marker({
-        position: r.startLocation,
-        map,
-        title:  'Work',
-        zIndex: 100,
-        icon: {
-          path:        google.maps.SymbolPath.CIRCLE,
-          scale:       9,
-          fillColor:   '#1a1a2e',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2.5,
-        },
-      });
-      break;
-    }
-  }
-
-  // Destination markers — one colored dot per successful route
   routeResults.forEach((r, i) => {
     if (!r) return;
-    const dest   = getDestinations()[i];
-    const marker = new google.maps.Marker({
+    const dest = getDestinations()[i];
+
+    originMarkers.push(new google.maps.Marker({
+      position: r.startLocation,
+      map,
+      title:  dest.name + ' (origin)',
+      zIndex: 100,
+      icon: {
+        path:         google.maps.SymbolPath.CIRCLE,
+        scale:        9,
+        fillColor:    '#1a1a2e',
+        fillOpacity:  1,
+        strokeColor:  '#ffffff',
+        strokeWeight: 2.5,
+      },
+    }));
+
+    destMarkers.push(new google.maps.Marker({
       position: r.endLocation,
       map,
       title:  dest.name,
       zIndex: 90,
       icon: {
-        path:        google.maps.SymbolPath.CIRCLE,
-        scale:       8,
-        fillColor:   dest.color,
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
+        path:         google.maps.SymbolPath.CIRCLE,
+        scale:        8,
+        fillColor:    dest.color,
+        fillOpacity:  1,
+        strokeColor:  '#ffffff',
         strokeWeight: 2,
       },
-    });
-    destMarkers.push(marker);
+    }));
   });
 }
 
