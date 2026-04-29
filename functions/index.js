@@ -1,32 +1,115 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+const { onSchedule }  = require('firebase-functions/v2/scheduler');
+const { defineSecret } = require('firebase-functions/params');
+const { initializeApp } = require('firebase-admin/app');
+const { getFirestore }  = require('firebase-admin/firestore');
 
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
+initializeApp();
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+const MAPS_API_KEY = defineSecret('MAPS_API_KEY');
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+// Mirror of public/config.js — keep place IDs in sync if routes change.
+const CATEGORIES = [
+  {
+    name: 'After Work',
+    routes: [
+      { name: 'The Apt',     origin: { placeId: 'ChIJZ2w2FseCToYRGzso_Erkmh0' }, destination: { placeId: 'ChIJu75pRICfToYRdmLWE1YKJOQ' } },
+      { name: 'Honey Butt', origin: { placeId: 'ChIJZ2w2FseCToYRGzso_Erkmh0' }, destination: { placeId: 'ChIJC9EwSwwfTIYRcBAA2TAZSOo' } },
+      { name: 'Kwebby',     origin: { placeId: 'ChIJu75pRICfToYRdmLWE1YKJOQ' }, destination: { placeId: 'ChIJC9EwSwwfTIYRcBAA2TAZSOo' } },
+    ],
+  },
+  {
+    name: 'Morning Commute',
+    routes: [
+      { name: 'The Apt',     origin: { placeId: 'ChIJu75pRICfToYRdmLWE1YKJOQ' }, destination: { placeId: 'ChIJZ2w2FseCToYRGzso_Erkmh0' } },
+      { name: 'Honey Butt', origin: { placeId: 'ChIJC9EwSwwfTIYRcBAA2TAZSOo' }, destination: { placeId: 'ChIJZ2w2FseCToYRGzso_Erkmh0' } },
+    ],
+  },
+];
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+const ROUTES_API_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+const FIELD_MASK = [
+  'routes.duration',
+  'routes.distanceMeters',
+  'routes.polyline.encodedPolyline',
+  'routes.legs.startLocation',
+  'routes.legs.endLocation',
+].join(',');
+
+async function fetchRoute(apiKey, origin, destination, name) {
+  const res = await fetch(ROUTES_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type':     'application/json',
+      'X-Goog-Api-Key':   apiKey,
+      'X-Goog-FieldMask': FIELD_MASK,
+    },
+    body: JSON.stringify({
+      origin:            { placeId: origin.placeId },
+      destination:       { placeId: destination.placeId },
+      travelMode:        'DRIVE',
+      routingPreference: 'TRAFFIC_AWARE_OPTIMAL',
+      routeModifiers:    { avoidTolls: true },
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!data.routes || data.routes.length === 0) {
+    console.error(`No routes returned for "${name}":`, data.error ?? data);
+    return null;
+  }
+
+  const route = data.routes[0];
+  const leg   = route.legs[0];
+
+  return {
+    duration:        parseInt(route.duration, 10),
+    distanceMeters:  route.distanceMeters,
+    encodedPolyline: route.polyline.encodedPolyline,
+    startLat:        leg.startLocation.latLng.latitude,
+    startLng:        leg.startLocation.latLng.longitude,
+    endLat:          leg.endLocation.latLng.latitude,
+    endLng:          leg.endLocation.latLng.longitude,
+  };
+}
+
+// Runs every 15 minutes from 1 PM to 10 PM Central Time.
+// Cloud Scheduler evaluates the cron in America/Chicago, so no UTC math needed.
+exports.refreshRouteCache = onSchedule(
+  {
+    schedule: '*/15 13-22 * * *',
+    timeZone: 'America/Chicago',
+    secrets:  [MAPS_API_KEY],
+  },
+  async () => {
+    const db     = getFirestore();
+    const apiKey = MAPS_API_KEY.value();
+
+    await Promise.all(
+      CATEGORIES.map(async (category) => {
+        const slug   = category.name.toLowerCase().replace(/\s+/g, '_');
+        const routes = await Promise.all(
+          category.routes.map(r =>
+            fetchRoute(apiKey, r.origin, r.destination, r.name).catch(err => {
+              console.error(`Fetch error for "${r.name}":`, err);
+              return null;
+            })
+          )
+        );
+
+        const ts = Date.now();
+        await db
+          .collection('routeHistory')
+          .doc(slug)
+          .collection('entries')
+          .add({
+            timestamp: ts,
+            payload:   JSON.stringify({ timestamp: ts, routes }),
+          });
+
+        const ok = routes.filter(Boolean).length;
+        console.log(`${category.name}: cached ${ok}/${routes.length} routes`);
+      })
+    );
+  }
+);
