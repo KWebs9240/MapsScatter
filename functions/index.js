@@ -82,12 +82,31 @@ exports.refreshRouteCache = onSchedule(
     secrets:  [MAPS_API_KEY],
   },
   async () => {
-    const db     = getFirestore();
-    const apiKey = MAPS_API_KEY.value();
+    console.log('refreshRouteCache started');
+
+    let db;
+    try {
+      db = getFirestore();
+      console.log('Firestore initialized');
+    } catch (err) {
+      console.error('Failed to initialize Firestore:', err);
+      throw err;
+    }
+
+    let apiKey;
+    try {
+      apiKey = MAPS_API_KEY.value();
+      console.log('API key retrieved, length:', apiKey?.length ?? 0);
+    } catch (err) {
+      console.error('Failed to retrieve MAPS_API_KEY secret:', err);
+      throw err;
+    }
 
     await Promise.all(
       CATEGORIES.map(async (category) => {
-        const slug   = category.name.toLowerCase().replace(/\s+/g, '_');
+        const slug = category.name.toLowerCase().replace(/\s+/g, '_');
+        console.log(`Processing category "${category.name}" (slug: "${slug}")`);
+
         const routes = await Promise.all(
           category.routes.map(r =>
             fetchRoute(apiKey, r.origin, r.destination, r.name).catch(err => {
@@ -97,19 +116,26 @@ exports.refreshRouteCache = onSchedule(
           )
         );
 
-        const ts = Date.now();
-        await db
-          .collection('routeHistory')
-          .doc(slug)
-          .collection('entries')
-          .add({
+        const ok = routes.filter(Boolean).length;
+        console.log(`${category.name}: fetched ${ok}/${routes.length} routes, writing to Firestore...`);
+
+        const ts  = Date.now();
+        const ref = db.collection('routeHistory').doc(slug).collection('entries');
+        console.log(`Firestore path: routeHistory/${slug}/entries`);
+
+        try {
+          await ref.add({
             timestamp: ts,
             payload:   JSON.stringify({ timestamp: ts, routes }),
           });
-
-        const ok = routes.filter(Boolean).length;
-        console.log(`${category.name}: cached ${ok}/${routes.length} routes`);
+          console.log(`${category.name}: Firestore write succeeded`);
+        } catch (err) {
+          console.error(`${category.name}: Firestore write failed — code: ${err.code}, message: ${err.message}`);
+          throw err;
+        }
       })
     );
+
+    console.log('refreshRouteCache completed');
   }
 );
